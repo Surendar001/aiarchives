@@ -12,6 +12,7 @@
     "https://meta.ai/*",
     "https://claude.ai/*",
     "https://gemini.google.com/*",
+    "https://copilot.microsoft.com/*",
     "https://chatgpt.com/*",
     "https://chat.openai.com/*"
   ],
@@ -26,6 +27,7 @@
         "https://bard.google.com/*",
         "https://gemini.google.com/*",
         "https://claude.ai/*",
+        "https://copilot.microsoft.com/*",
         "https://www.meta.ai/*"
       ],
       "js": ["index.js"],
