@@ -9,9 +9,6 @@ import { loadConfig } from '@/lib/config';
 
 let isInitialized = false;
 
-/**
- * Initialize services if not already initialized
- */
 async function ensureInitialized() {
   if (!isInitialized) {
     const config = loadConfig();
@@ -21,49 +18,42 @@ async function ensureInitialized() {
   }
 }
 
-/**
- * POST /api/conversation
- *
- * Handles storing a new conversation from HTML input
- *
- * Request body (multipart/form-data):
- * - htmlDoc: File - The HTML document containing the conversation
- * - model: string - The AI model used (e.g., "ChatGPT", "Claude")
- *
- * Response:
- * - 201: { url: string } - The permalink URL for the conversation
- * - 400: { error: string } - Invalid request
- * - 500: { error: string } - Server error
- */
+// ✅ Set CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders,
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
-    // Initialize services on first request
     await ensureInitialized();
 
     const formData = await req.formData();
-    const file = formData.get('htmlDoc');
+    const file = formData.get('htmlDoc') || formData.get('file'); // support both names
     const model = formData.get('model')?.toString() ?? 'ChatGPT';
 
-    // Validate input
     if (!(file instanceof Blob)) {
-      return NextResponse.json({ error: '`htmlDoc` must be a file field' }, { status: 400 });
+      return NextResponse.json({ error: '`htmlDoc` must be a file field' }, { status: 400, headers: corsHeaders });
     }
 
-    // Parse the conversation from HTML
     const html = await file.text();
     const conversation = await parseHtmlToConversation(html, model);
-      console.log("\n📋 conversation =>", conversation.model, conversation.content);
-      console.log("\n📄 HTML snapshot (truncated):");
-      console.log(html.substring(0, 300) + "...");
 
+    console.log('\n📋 conversation =>', conversation.model, conversation.content);
+    console.log('\n📄 HTML snapshot (truncated):');
+    console.log(html.substring(0, 300) + '...');
 
-    // Generate a unique ID for the conversation
     const conversationId = randomUUID();
-
-    // Store only the conversation content in S3
     const contentKey = await s3Client.storeConversation(conversationId, conversation.content);
 
-    // Create the database record with metadata
     const dbInput: CreateConversationInput = {
       model: conversation.model,
       scrapedAt: new Date(conversation.scrapedAt),
@@ -71,13 +61,11 @@ export async function POST(req: NextRequest) {
     };
 
     const record = await createConversationRecord(dbInput);
-
-    // Generate the permalink using the database-generated ID
     const permalink = `${process.env.NEXT_PUBLIC_BASE_URL}/c/${record.id}`;
 
-    return NextResponse.json({ url: permalink }, { status: 201 });
+    return NextResponse.json({ url: permalink }, { status: 201, headers: corsHeaders });
   } catch (err) {
     console.error('Error processing conversation:', err);
-    return NextResponse.json({ error: 'Internal error, see logs' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal error, see logs' }, { status: 500, headers: corsHeaders });
   }
 }
