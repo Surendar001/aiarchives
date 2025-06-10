@@ -1,6 +1,6 @@
 'use strict';
-var isRequesting = false;
-var model = 'Copilot';
+let currentModel = 'Unknown'; // <- ✅ Define it once globally
+
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'model') {
