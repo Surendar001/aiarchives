@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseHtmlToConversation } from '@/lib/parsers';
 import { dbClient } from '@/lib/db/client';
 import { s3Client } from '@/lib/storage/s3';
-import { CreateConversationInput } from '@/lib/db/types';
-import { createConversationRecord } from '@/lib/db/conversations';
-import { randomUUID } from 'crypto';
+// import { CreateConversationInput } from '@/lib/db/types';
+// import { createConversationRecord } from '@/lib/db/conversations';
+// import { randomUUID } from 'crypto';
 import { loadConfig } from '@/lib/config';
 
 let isInitialized = false;
