@@ -60,8 +60,8 @@ export async function POST(req: NextRequest) {
     //   contentKey,
     // };
 
-    // const record = await createConversationRecord(dbInput);
-    // const permalink = `${process.env.NEXT_PUBLIC_BASE_URL}/c/${record.id}`;
+    //  const record = await createConversationRecord(dbInput);
+    //  const permalink = `${process.env.NEXT_PUBLIC_BASE_URL}/c/${record.id}`;
 
     // return NextResponse.json({ url: permalink }, { status: 201, headers: corsHeaders });
   } catch (err) {
