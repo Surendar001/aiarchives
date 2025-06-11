@@ -18,6 +18,20 @@ async function ensureInitialized() {
   }
 }
 
+const ALLOWED_ORIGIN = '*';
+
+export async function OPTIONS() {
+  // Preflight handler
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+      'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
+
 //  Set CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,16 +68,17 @@ export async function POST(req: NextRequest) {
     // const conversationId = randomUUID();
     // const contentKey = await s3Client.storeConversation(conversationId, conversation.content);
 
-    // const dbInput: CreateConversationInput = {
-    //   model: conversation.model,
-    //   scrapedAt: new Date(conversation.scrapedAt),
-    //   contentKey,
-    // };
+    // Create the database record with metadata
+    const dbInput: CreateConversationInput = {
+      model: conversation.model,
+      scrapedAt: new Date(conversation.scrapedAt),
+      contentKey,
+    };
 
     //  const record = await createConversationRecord(dbInput);
     //  const permalink = `${process.env.NEXT_PUBLIC_BASE_URL}/c/${record.id}`;
 
-    // return NextResponse.json({ url: permalink }, { status: 201, headers: corsHeaders });
+    return NextResponse.json({ url: permalink }, { status: 201 });
   } catch (err) {
     console.error('Error processing conversation:', err);
     return NextResponse.json({ error: 'Internal error, see logs' }, { status: 500, headers: corsHeaders });

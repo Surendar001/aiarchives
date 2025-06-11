@@ -39,9 +39,9 @@ class S3StorageClient {
   }
 
   /**
-   * Store conversation content in S3
+   * Store HTML conversation content in S3
    * @param conversationId Unique identifier for the conversation
-   * @param content Conversation content to store
+   * @param content HTML content to store
    * @returns The S3 key where the content was stored
    */
   public async storeConversation(conversationId: string, content: string): Promise<string> {
@@ -49,14 +49,14 @@ class S3StorageClient {
       throw new Error('S3 client not initialized');
     }
 
-    const key = `conversations/${conversationId}.json`;
+    const key = `conversations/${conversationId}.html`;
 
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.bucketName,
         Key: key,
         Body: content,
-        ContentType: 'application/json',
+        ContentType: 'text/html',
       })
     );
 

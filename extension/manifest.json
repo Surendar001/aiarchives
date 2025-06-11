@@ -30,8 +30,9 @@
         "https://copilot.microsoft.com/*",
         "https://www.meta.ai/*"
       ],
-      "js": ["index.js"],
-      "run_at": "document_end"
+      "js": ["config.js", "index.js"],
+      "run_at": "document_end",
+      "type": "module"
     }
   ]
 }

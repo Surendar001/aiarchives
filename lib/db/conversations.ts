@@ -15,20 +15,30 @@ export async function createConversationRecord(input: CreateConversationInput): 
     INSERT INTO conversations (
       model,
       scraped_at,
-      content_key
+      content_key,
+      source_html_bytes,
+      views
     ) VALUES (
-      $1, $2, $3
+      $1, $2, $3, $4, $5
     )
-    RETURNING 
+    RETURNING
       id,
       model,
-      scraped_at as "scrapedAt",
-      content_key as "contentKey",
-      created_at as "createdAt"
+      scraped_at     AS "scrapedAt",
+      content_key    AS "contentKey",
+      source_html_bytes AS "sourceHtmlBytes",
+      views,
+      created_at     AS "createdAt"
   `;
 
   try {
-    const result = await pool.query(query, [input.model, input.scrapedAt, input.contentKey]);
+    const result = await pool.query(query, [
+      input.model,
+      input.scrapedAt,
+      input.contentKey,
+      input.sourceHtmlBytes,
+      input.views,
+    ]);
 
     if (result.rows.length === 0) {
       throw new Error('Failed to create conversation record - no rows returned');
