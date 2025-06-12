@@ -18,7 +18,6 @@ async function ensureInitialized() {
   }
 }
 
-const ALLOWED_ORIGIN = '*';
 
 
 
