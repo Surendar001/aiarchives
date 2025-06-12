@@ -44,8 +44,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Important to keep this here for async sendResponse
   }
 });
-<<<<<<< HEAD
-=======
 
 async function scrape() {
   const htmlDoc = document.documentElement.innerHTML;
@@ -73,4 +71,3 @@ async function scrape() {
     isRequesting = false;
   }
 }
->>>>>>> e963980571c40a5e0cbf75df5e2379ad7c2b77b6

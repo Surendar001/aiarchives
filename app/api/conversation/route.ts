@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseHtmlToConversation } from '@/lib/parsers';
 import { dbClient } from '@/lib/db/client';
 import { s3Client } from '@/lib/storage/s3';
-// import { CreateConversationInput } from '@/lib/db/types';
-// import { createConversationRecord } from '@/lib/db/conversations';
-// import { randomUUID } from 'crypto';
+import { CreateConversationInput } from '@/lib/db/types';
+import { createConversationRecord } from '@/lib/db/conversations';
+import { randomUUID } from 'crypto';
 import { loadConfig } from '@/lib/config';
 
 let isInitialized = false;
@@ -20,17 +20,7 @@ async function ensureInitialized() {
 
 const ALLOWED_ORIGIN = '*';
 
-export async function OPTIONS() {
-  // Preflight handler
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-      'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
-}
+
 
 //  Set CORS headers
 const corsHeaders = {
@@ -65,18 +55,20 @@ export async function POST(req: NextRequest) {
     console.log('\n📄 HTML snapshot (truncated):');
     console.log(html.substring(0, 300) + '...');
 
-    // const conversationId = randomUUID();
-    // const contentKey = await s3Client.storeConversation(conversationId, conversation.content);
+    const conversationId = randomUUID();
+    const contentKey = await s3Client.storeConversation(conversationId, conversation.content);
 
     // Create the database record with metadata
-    const dbInput: CreateConversationInput = {
+      const dbInput: CreateConversationInput = {
       model: conversation.model,
       scrapedAt: new Date(conversation.scrapedAt),
+      sourceHtmlBytes: conversation.sourceHtmlBytes,
+      views: 0,
       contentKey,
     };
 
-    //  const record = await createConversationRecord(dbInput);
-    //  const permalink = `${process.env.NEXT_PUBLIC_BASE_URL}/c/${record.id}`;
+     const record = await createConversationRecord(dbInput);
+     const permalink = `${process.env.NEXT_PUBLIC_BASE_URL}/c/${record.id}`;
 
     return NextResponse.json({ url: permalink }, { status: 201 });
   } catch (err) {
