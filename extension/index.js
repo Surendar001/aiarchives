@@ -2,28 +2,7 @@
 
 let currentModel = 'Unknown'; // Default model
 
-// ✅ Extract only the conversation from Copilot DOM
-function extractCopilotConversation() {
-  const messages = [];
-
-  const aiMessages = document.querySelectorAll('[data-content="ai-message"]');
-  const userMessages = document.querySelectorAll('[data-content="user-message"]');
-
-  // Sort by DOM position
-  const allNodes = [...aiMessages, ...userMessages].sort((a, b) =>
-    a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
-  );
-
-  for (const node of allNodes) {
-    const role = node.getAttribute('data-content') === 'ai-message' ? 'assistant' : 'user';
-    const content = node.innerText.trim();
-    if (content) messages.push({ role, content });
-  }
-
-  return messages;
-}
-
-// ✅ Main listener for extension popup trigger
+// Handle incoming messages from the extension popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'model') {
     currentModel = message.model;
@@ -32,13 +11,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === 'scrape') {
-    console.log('🔍 Scrape triggered from popup');
+    console.log('📥 Scrape triggered from popup');
 
-    const conversation = extractCopilotConversation();
+    // ✅ Extract only relevant conversation messages
+    const messages = extractCopilotConversation();
 
     const formData = new FormData();
-    formData.append('model', currentModel);
-    formData.append('content', JSON.stringify(conversation)); // ✅ Send only structured conversation
+    formData.append('model', currentModel); // e.g. "Copilot"
+    formData.append('content', JSON.stringify(messages)); // Only messages
 
     fetch('https://aiarchives-suren.duckdns.org/api/conversation', {
       method: 'POST',
@@ -46,14 +26,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log('✅ Successfully sent conversation:', data);
-        sendResponse({ success: true, url: data.url });
+        console.log('✅ Conversation data sent:', data);
+        sendResponse({ success: true });
       })
       .catch((err) => {
         console.error('❌ Error sending conversation:', err);
         sendResponse({ success: false });
       });
 
-    return true; // for async response
+    return true; // Keeps the sendResponse channel open for async
   }
 });
+
+// Extract user and assistant messages from Copilot page
+function extractCopilotConversation() {
+  const messages = [];
+
+  const allMessageNodes = [
+    ...document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
+  ].sort((a, b) =>
+    a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
+  );
+
+  for (const node of allMessageNodes) {
+    const role = node.getAttribute('data-content') === 'user-message' ? 'user' : 'assistant';
+    const content = node.innerText.trim();
+    if (content) {
+      messages.push({ role, content });
+    }
+  }
+
+  return messages;
+}
