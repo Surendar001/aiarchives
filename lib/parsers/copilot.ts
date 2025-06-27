@@ -1,12 +1,12 @@
 import type { Conversation } from '@/types/conversation';
 import { JSDOM } from 'jsdom';
 
-/**
- * Extracts a Copilot share page into a structured Conversation.
- * @param html - Raw HTML content from the Copilot share page
- * @returns Promise resolving to a structured Conversation object
- */
 export async function parseCopilot(html: string): Promise<Conversation> {
+  const htmlByteLength = Buffer.byteLength(html, 'utf-8');
+  if (htmlByteLength <= 0) {
+    throw new Error('HTML content is empty or invalid');
+  }
+
   const dom = new JSDOM(html);
   const document = dom.window.document;
 
@@ -21,12 +21,12 @@ export async function parseCopilot(html: string): Promise<Conversation> {
       if (!content) return null;
       return { role, content };
     })
-    .filter(Boolean); // filters out null entries
+    .filter(Boolean);
 
   return {
     model: 'Copilot',
     content: JSON.stringify(messages, null, 2),
     scrapedAt: new Date().toISOString(),
-    sourceHtmlBytes: Buffer.byteLength(html, 'utf-8'), // more reliable than TextEncoder in Node
+    sourceHtmlBytes: htmlByteLength,
   };
 }
