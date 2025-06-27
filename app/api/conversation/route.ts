@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
      const record = await createConversationRecord(dbInput);
      const permalink = `${process.env.NEXT_PUBLIC_BASE_URL}/c/${record.id}`;
 
-    return NextResponse.json({ url: permalink }, { status: 201 });
+    return NextResponse.json({ url: permalink }, { status: 201, headers: corsHeaders });
+
   } catch (err) {
     console.error('Error processing conversation:', err);
     return NextResponse.json({ error: 'Internal error, see logs' }, { status: 500, headers: corsHeaders });
