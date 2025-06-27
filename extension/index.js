@@ -1,14 +1,15 @@
 'use strict';
-let currentModel = 'Unknown'; // <- ✅ Define it once globally
 
+let currentModel = 'Unknown'; // Default model
 
-// Function to extract only Copilot conversation (not full HTML)
+// ✅ Extract only the conversation from Copilot DOM
 function extractCopilotConversation() {
   const messages = [];
 
   const aiMessages = document.querySelectorAll('[data-content="ai-message"]');
   const userMessages = document.querySelectorAll('[data-content="user-message"]');
 
+  // Sort by DOM position
   const allNodes = [...aiMessages, ...userMessages].sort((a, b) =>
     a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
   );
@@ -22,22 +23,22 @@ function extractCopilotConversation() {
   return messages;
 }
 
-// Listen for messages from popup or background
+// ✅ Main listener for extension popup trigger
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'model') {
     currentModel = message.model;
-    console.log('Model set to:', currentModel);
+    console.log('✅ Model set to:', currentModel);
     sendResponse({ status: 'ok' });
   }
 
   if (message.action === 'scrape') {
-    console.log('🟡 Scrape triggered from popup');
+    console.log('🔍 Scrape triggered from popup');
 
     const conversation = extractCopilotConversation();
 
     const formData = new FormData();
-    formData.append('model', currentModel); // e.g., "Copilot"
-    formData.append('content', JSON.stringify(conversation)); // ✅ only messages
+    formData.append('model', currentModel);
+    formData.append('content', JSON.stringify(conversation)); // ✅ Send only structured conversation
 
     fetch('https://aiarchives-suren.duckdns.org/api/conversation', {
       method: 'POST',
@@ -45,14 +46,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log('✅ Data sent successfully:', data);
-        sendResponse({ success: true });
+        console.log('✅ Successfully sent conversation:', data);
+        sendResponse({ success: true, url: data.url });
       })
       .catch((err) => {
         console.error('❌ Error sending conversation:', err);
         sendResponse({ success: false });
       });
 
-    return true; // Important for async sendResponse
+    return true; // for async response
   }
 });
