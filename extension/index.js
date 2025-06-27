@@ -63,3 +63,4 @@ function extractCopilotConversation() {
 
   return messages;
 }
+
