@@ -41,3 +41,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // For async sendResponse
   }
 });
+
+
+// Extract user and assistant messages from Copilot page
+function extractCopilotConversation() {
+  const messages = [];
+
+  const allMessageNodes = [
+    ...document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
+  ].sort((a, b) =>
+    a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
+  );
+
+  for (const node of allMessageNodes) {
+    const role = node.getAttribute('data-content') === 'user-message' ? 'user' : 'assistant';
+    const content = node.innerText.trim();
+    if (content) {
+      messages.push({ role, content });
+    }
+  }
+
+  return messages;
+}
