@@ -14,16 +14,19 @@ export async function parseCopilot(html: string): Promise<Conversation> {
     document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
   );
 
-  const messages = allMessageNodes.map((node) => {
-    const role = node.getAttribute('data-content') === 'user-message' ? 'user' : 'assistant';
-    const content = node.textContent?.trim() ?? '';
-    return { role, content };
-  });
+  const messages = allMessageNodes
+    .map((node) => {
+      const role = node.getAttribute('data-content') === 'user-message' ? 'user' : 'assistant';
+      const content = node.textContent?.trim();
+      if (!content) return null;
+      return { role, content };
+    })
+    .filter(Boolean); // filters out null entries
 
   return {
     model: 'Copilot',
     content: JSON.stringify(messages, null, 2),
     scrapedAt: new Date().toISOString(),
-    sourceHtmlBytes: new TextEncoder().encode(html).length,
+    sourceHtmlBytes: Buffer.byteLength(html, 'utf-8'), // more reliable than TextEncoder in Node
   };
 }
