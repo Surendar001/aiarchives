@@ -1,4 +1,5 @@
 import type { Conversation } from '@/types/conversation';
+import { JSDOM } from 'jsdom';
 
 /**
  * Extracts a Copilot share page into a structured Conversation.
@@ -6,10 +7,11 @@ import type { Conversation } from '@/types/conversation';
  * @returns Promise resolving to a structured Conversation object
  */
 export async function parseCopilot(html: string): Promise<Conversation> {
-  const dom = new DOMParser().parseFromString(html, 'text/html');
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
 
   const allMessageNodes = Array.from(
-    dom.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
+    document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
   );
 
   const messages = allMessageNodes.map((node) => {
