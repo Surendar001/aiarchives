@@ -1,5 +1,3 @@
-import type { Conversation } from '@/types/conversation';
-
 /**
  * Extracts a Copilot share page into a structured Conversation.
  * @param html - Raw HTML content from the Copilot share page
@@ -27,4 +25,3 @@ export async function parseHtmlToConversation(html: string, model: string) {
     sourceHtmlBytes: new TextEncoder().encode(html).length,
   };
 }
-
