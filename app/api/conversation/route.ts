@@ -18,9 +18,6 @@ async function ensureInitialized() {
   }
 }
 
-
-
-
 //  Set CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
