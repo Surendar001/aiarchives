@@ -27,6 +27,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
    formData.append('file', new Blob([html], { type: 'text/html' }));
 formData.append('model', currentModel);
 formData.append('content', messages); // ⬅️ this is now rich HTML
+const conversationHTML = messages.join('<hr>'); // optional separator
+formData.append('content', conversationHTML);   // send rich HTML
+
 
 
     fetch('https://aiarchives-suren.duckdns.org/api/conversation', {
