@@ -1,11 +1,6 @@
 import type { Conversation } from '@/types/conversation';
 import { JSDOM } from 'jsdom';
 
-/**
- * Parses a Copilot HTML document and extracts the conversation as HTML.
- * @param html - The raw HTML of the page
- * @returns A Conversation object
- */
 export async function parseCopilot(html: string): Promise<Conversation> {
   const htmlByteLength = Buffer.byteLength(html, 'utf-8');
   if (htmlByteLength <= 0) {
@@ -15,15 +10,17 @@ export async function parseCopilot(html: string): Promise<Conversation> {
   const dom = new JSDOM(html);
   const document = dom.window.document;
 
-  // Select Copilot chat message blocks
+  // More flexible selector for capturing Copilot message containers
   const messageNodes = Array.from(
-    document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
+    document.querySelectorAll(
+      '[data-content="user-message"], [data-content="ai-message"], div.text-base.break-words'
+    )
   );
 
   const messagesHtml = messageNodes
     .map((el) => el.innerHTML.trim())
     .filter(Boolean)
-    .join('<hr>'); // Optional separator
+    .join('<hr>');
 
   if (!messagesHtml || messagesHtml.trim().length === 0) {
     throw new Error('Could not extract any message HTML content');
@@ -31,7 +28,7 @@ export async function parseCopilot(html: string): Promise<Conversation> {
 
   return {
     model: 'Copilot',
-    content: messagesHtml, // ✅ Keep HTML for S3
+    content: messagesHtml,
     scrapedAt: new Date().toISOString(),
     sourceHtmlBytes: Buffer.byteLength(messagesHtml, 'utf-8'),
   };
