@@ -15,17 +15,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const html = document.documentElement.outerHTML;
 
     // ✅ Extract Copilot messages
-    const messages = [
-      ...document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
-    ]
-      .map(el => el.innerText.trim())
-      .filter(Boolean)
-      .join('\n\n');
+   const messages = [
+  ...document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
+]
+  .map(el => el.innerHTML.trim())  // ⬅️ change from innerText to innerHTML
+  .filter(Boolean)
+  .join('<hr>'); // optional divider between messages
+
 
     const formData = new FormData();
-    formData.append('file', new Blob([html], { type: 'text/html' }));
-    formData.append('model', currentModel); // "Copilot"
-    formData.append('content', messages);
+   formData.append('file', new Blob([html], { type: 'text/html' }));
+formData.append('model', currentModel);
+formData.append('content', messages); // ⬅️ this is now rich HTML
+
 
     fetch('https://aiarchives-suren.duckdns.org/api/conversation', {
       method: 'POST',

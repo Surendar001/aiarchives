@@ -10,24 +10,22 @@ export async function parseCopilot(html: string): Promise<Conversation> {
   const dom = new JSDOM(html);
   const document = dom.window.document;
 
-  const allMessageNodes = Array.from(
+  const messageNodes = Array.from(
     document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
   );
 
-  const htmlMessages = allMessageNodes
+  const htmlBlocks = messageNodes
     .map((node) => {
       const role = node.getAttribute('data-content') === 'user-message' ? 'User' : 'Copilot';
-      const rawHtml = node.innerHTML
-        .replace(/^<[^>]+>Copilot said<\/[^>]+>/i, '') // remove "Copilot said"
-        .replace(/<[^>]*>Edit in a page<\/[^>]*>$/, ''); // remove "Edit in a page"
-
-      return `<div class="message-block"><strong>${role}:</strong><div class="message">${rawHtml}</div></div>`;
-    })
-    .filter(Boolean);
+      const htmlContent = node.innerHTML.trim()
+        .replace(/^<[^>]+>Copilot said<\/[^>]+>/i, '')
+        .replace(/<[^>]*>Edit in a page<\/[^>]*>$/, '');
+      return `<div class="message-block"><strong>${role}:</strong><div class="message">${htmlContent}</div></div>`;
+    });
 
   return {
     model: 'Copilot',
-    content: htmlMessages.join('\n'), // return styled HTML
+    content: htmlBlocks.join('\n'),
     scrapedAt: new Date().toISOString(),
     sourceHtmlBytes: htmlByteLength,
   };
