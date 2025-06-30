@@ -18,7 +18,8 @@ export async function parseCopilot(json: string): Promise<Conversation> {
   try {
     messages = JSON.parse(json);
   } catch (err) {
-    throw new Error('Invalid JSON content');
+    console.error('Failed to parse Copilot conversation:', err);
+  throw new Error('Could not parse Copilot conversation');
   }
 
   if (!Array.isArray(messages) || messages.length === 0) {
