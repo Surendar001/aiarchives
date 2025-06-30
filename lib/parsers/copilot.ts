@@ -1,9 +1,6 @@
 import type { Conversation } from '@/types/conversation';
 import { JSDOM } from 'jsdom';
 
-/**
- * Parses raw HTML from a Copilot page into a structured conversation.
- */
 export async function parseCopilot(html: string): Promise<Conversation> {
   const htmlByteLength = Buffer.byteLength(html, 'utf-8');
   if (htmlByteLength <= 0) {
@@ -17,21 +14,28 @@ export async function parseCopilot(html: string): Promise<Conversation> {
     document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
   );
 
-  const messages = allMessageNodes
+  const cleanedMessages = allMessageNodes
     .map((node) => {
-      const role = node.getAttribute('data-content') === 'user-message' ? 'user' : 'assistant';
-      const content = node.textContent?.trim();
-      return content ? { role, content } : null;
+      let content = node.textContent?.trim() || '';
+
+      // Clean up Copilot artifacts
+      content = content
+        .replace(/^Copilot said\s*/i, '')
+        .replace(/Edit in a page$/i, '')
+        .replace(/\d+(en\.wikipedia|www\.)[^\s]*/gi, '')
+        .trim();
+
+      return content;
     })
     .filter(Boolean);
 
-  if (!messages.length) {
+  if (!cleanedMessages.length) {
     throw new Error('No valid Copilot messages found');
   }
 
   return {
     model: 'Copilot',
-    content: JSON.stringify(messages, null, 2),
+    content: cleanedMessages.join('\n\n'), // 👈 return as plain text, not JSON
     scrapedAt: new Date().toISOString(),
     sourceHtmlBytes: htmlByteLength,
   };
