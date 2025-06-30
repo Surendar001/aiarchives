@@ -7,44 +7,35 @@ export async function parseCopilot(html: string): Promise<Conversation> {
     throw new Error('HTML content is empty or invalid');
   }
 
- const dom = new JSDOM(html, {
-  pretendToBeVisual: true,
-  resources: 'usable',
-  runScripts: 'outside-only',
-});
-
+  const dom = new JSDOM(html);
   const document = dom.window.document;
 
   const allMessageNodes = Array.from(
-    document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
+    document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
   );
 
-  const cleanedMessages = allMessageNodes.map(node => {
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = node.innerHTML;
+  const cleanedMessages = allMessageNodes
+    .map((node) => {
+      let content = node.textContent?.trim() || '';
 
-    let html = wrapper.innerHTML;
+      // Clean up Copilot artifacts
+      content = content
+        .replace(/^Copilot said\s*/i, '')
+        .replace(/Edit in a page$/i, '')
+        .replace(/\d+(en\.wikipedia|www\.)[^\s]*/gi, '')
+        .trim();
 
-    // ✅ Remove "User:", "Copilot:", "Copilot said" (wrapped or plain)
-    html = html
-      .replace(/<[^>]*>\s*(User:|Copilot:|Copilot said)\s*<\/[^>]*>/gi, '')
-      .replace(/\b(User:|Copilot:|Copilot said)\b\s*/gi, '');
+      return content;
+    })
+    .filter(Boolean);
 
-    // ✅ Remove duplicate numbered references like "1en.wikipedia.orgen.wikipedia.org"
-    html = html.replace(/\d+\s*(https?:\/\/)?[^\s<]+?\1?[^\s<]*/g, '');
-
-    // ✅ Remove trailing "1", "2", "3" style footnotes if alone
-    html = html.replace(/\b\d+\b/g, '');
-
-    wrapper.innerHTML = html;
-    return wrapper.outerHTML;
-  });
-
-  const finalHTML = cleanedMessages.join('<hr>');
+  if (!cleanedMessages.length) {
+    throw new Error('No valid Copilot messages found');
+  }
 
   return {
     model: 'Copilot',
-    content: finalHTML,
+    content: cleanedMessages.join('\n\n'), // 👈 return as plain text, not JSON
     scrapedAt: new Date().toISOString(),
     sourceHtmlBytes: htmlByteLength,
   };
