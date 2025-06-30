@@ -14,28 +14,20 @@ export async function parseCopilot(html: string): Promise<Conversation> {
     document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
   );
 
-  const cleanedMessages = allMessageNodes
+  const htmlMessages = allMessageNodes
     .map((node) => {
-      let content = node.textContent?.trim() || '';
+      const role = node.getAttribute('data-content') === 'user-message' ? 'User' : 'Copilot';
+      const rawHtml = node.innerHTML
+        .replace(/^<[^>]+>Copilot said<\/[^>]+>/i, '') // remove "Copilot said"
+        .replace(/<[^>]*>Edit in a page<\/[^>]*>$/, ''); // remove "Edit in a page"
 
-      // Clean up Copilot artifacts
-      content = content
-        .replace(/^Copilot said\s*/i, '')
-        .replace(/Edit in a page$/i, '')
-        .replace(/\d+(en\.wikipedia|www\.)[^\s]*/gi, '')
-        .trim();
-
-      return content;
+      return `<div class="message-block"><strong>${role}:</strong><div class="message">${rawHtml}</div></div>`;
     })
     .filter(Boolean);
 
-  if (!cleanedMessages.length) {
-    throw new Error('No valid Copilot messages found');
-  }
-
   return {
     model: 'Copilot',
-    content: cleanedMessages.join('\n\n'), // 👈 return as plain text, not JSON
+    content: htmlMessages.join('\n'), // return styled HTML
     scrapedAt: new Date().toISOString(),
     sourceHtmlBytes: htmlByteLength,
   };
