@@ -1,6 +1,6 @@
 'use strict';
+let currentModel = 'Unknown'; // <- ✅ Define it once globally
 
-let currentModel = 'Copilot'; // default
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'model') {
@@ -12,17 +12,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'scrape') {
     console.log('Scrape triggered from popup');
 
-    const messageNodes = document.querySelectorAll(
-      'div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap'
-    );
+    const html = document.documentElement.outerHTML;
 
-    const messages = Array.from(messageNodes).map(el => el.innerText.trim()).filter(Boolean);
-
-    const cleanedText = messages.join('\n\n');
+    // ✅ Extract Copilot messages
+    const messages = [
+      ...document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
+    ]
+      .map(el => el.innerText.trim())
+      .filter(Boolean)
+      .join('\n\n');
 
     const formData = new FormData();
-    formData.append('file', new Blob([cleanedText], { type: 'text/plain' }));
-    formData.append('model', currentModel);
+    formData.append('file', new Blob([html], { type: 'text/html' }));
+    formData.append('model', currentModel); // "Copilot"
+    formData.append('content', messages);
 
     fetch('https://aiarchives-suren.duckdns.org/api/conversation', {
       method: 'POST',
@@ -30,7 +33,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log('✅ Conversation data sent:', data);
+        console.log('✅ Data sent:', data);
         sendResponse({ success: true });
       })
       .catch((err) => {
@@ -38,29 +41,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false });
       });
 
-    return true; // For async sendResponse
+    return true; // Important to keep this here for async sendResponse
   }
 });
 
+async function scrape() {
+  const htmlDoc = document.documentElement.innerHTML;
+  if (!htmlDoc || isRequesting) return;
 
-// Extract user and assistant messages from Copilot page
-function extractCopilotConversation() {
-  const messages = [];
+  isRequesting = true;
 
-  const allMessageNodes = [
-    ...document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
-  ].sort((a, b) =>
-    a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
-  );
+  const apiUrl = `${window.EXTENSION_CONFIG.baseUrl}/api/conversation`;
+  const body = new FormData();
 
-  for (const node of allMessageNodes) {
-    const role = node.getAttribute('data-content') === 'user-message' ? 'user' : 'assistant';
-    const content = node.innerText.trim();
-    if (content) {
-      messages.push({ role, content });
-    }
+  // raw HTML
+  body.append('htmlDoc', new Blob([htmlDoc], { type: 'text/plain; charset=utf-8' }));
+  // model
+  body.append('model', currentModel);
+
+  try {
+    const res = await fetch(apiUrl, { method: 'POST', body });
+    console.log('res =>', res, apiUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { url } = await res.json();
+    window.open(url, '_blank'); // view the saved conversation
+  } catch (err) {
+    alert(`Error saving conversation: ${err.message}`);
+  } finally {
+    isRequesting = false;
   }
-
-  return messages;
 }
-
