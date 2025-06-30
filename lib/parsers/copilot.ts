@@ -7,7 +7,12 @@ export async function parseCopilot(html: string): Promise<Conversation> {
     throw new Error('HTML content is empty or invalid');
   }
 
-  const dom = new JSDOM(html);
+ const dom = new JSDOM(html, {
+  pretendToBeVisual: true,
+  resources: 'usable',
+  runScripts: 'outside-only',
+});
+
   const document = dom.window.document;
 
   const allMessageNodes = Array.from(
