@@ -1,10 +1,12 @@
-import { JSDOM } from 'jsdom';
 import type { Conversation } from '@/types/conversation';
+import { JSDOM } from 'jsdom';
 
-/**
- * Extracts a Copilot page's raw HTML and returns only conversation messages.
- */
-export async function parseHtmlToConversation(html: string, model: string): Promise<Conversation> {
+export async function parseCopilot(html: string): Promise<Conversation> {
+  const htmlByteLength = Buffer.byteLength(html, 'utf-8');
+  if (htmlByteLength <= 0) {
+    throw new Error('HTML content is empty or invalid');
+  }
+
   const dom = new JSDOM(html);
   const document = dom.window.document;
 
@@ -12,18 +14,19 @@ export async function parseHtmlToConversation(html: string, model: string): Prom
     document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
   );
 
-  const messages = allMessageNodes.map((node) => {
-    const role = node.getAttribute('data-content') === 'user-message' ? 'user' : 'assistant';
-    const content = node.textContent?.trim() ?? '';
-    return { role, content };
-  });
-
-  const serialized = JSON.stringify(messages, null, 2);
+  const messages = allMessageNodes
+    .map((node) => {
+      const role = node.getAttribute('data-content') === 'user-message' ? 'user' : 'assistant';
+      const content = node.textContent?.trim();
+      if (!content) return null;
+      return { role, content };
+    })
+    .filter(Boolean);
 
   return {
-    model,
-    content: serialized,
+    model: 'Copilot',
+    content: JSON.stringify(messages, null, 2),
     scrapedAt: new Date().toISOString(),
-    sourceHtmlBytes: Buffer.byteLength(html, 'utf-8'), // satisfies DB constraint
+    sourceHtmlBytes: htmlByteLength,
   };
 }
