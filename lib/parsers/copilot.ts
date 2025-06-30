@@ -7,31 +7,40 @@ export async function parseCopilot(html: string): Promise<Conversation> {
     throw new Error('HTML content is empty or invalid');
   }
 
- const dom = new JSDOM(html, { runScripts: 'outside-only' });
+  const dom = new JSDOM(html);
   const document = dom.window.document;
 
-  // More flexible selector for capturing Copilot message containers
- const messageNodes = Array.from(
-  document.querySelectorAll(
-    '[data-content="user-message"], [data-content="ai-message"], div.text-base.break-words'
-  )
-);
-console.log('Found', messageNodes.length, 'message nodes');
+  const allMessageNodes = Array.from(
+    document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
+  );
 
+  const cleanedMessages = allMessageNodes.map(node => {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = node.innerHTML;
 
-  const messagesHtml = messageNodes
-    .map((el) => el.innerHTML.trim())
-    .filter(Boolean)
-    .join('<hr>');
+    let html = wrapper.innerHTML;
 
-  if (!messagesHtml || messagesHtml.trim().length === 0) {
-    throw new Error('Could not extract any message HTML content');
-  }
+    // ✅ Remove "User:", "Copilot:", "Copilot said" (wrapped or plain)
+    html = html
+      .replace(/<[^>]*>\s*(User:|Copilot:|Copilot said)\s*<\/[^>]*>/gi, '')
+      .replace(/\b(User:|Copilot:|Copilot said)\b\s*/gi, '');
+
+    // ✅ Remove duplicate numbered references like "1en.wikipedia.orgen.wikipedia.org"
+    html = html.replace(/\d+\s*(https?:\/\/)?[^\s<]+?\1?[^\s<]*/g, '');
+
+    // ✅ Remove trailing "1", "2", "3" style footnotes if alone
+    html = html.replace(/\b\d+\b/g, '');
+
+    wrapper.innerHTML = html;
+    return wrapper.outerHTML;
+  });
+
+  const finalHTML = cleanedMessages.join('<hr>');
 
   return {
     model: 'Copilot',
-    content: messagesHtml,
+    content: finalHTML,
     scrapedAt: new Date().toISOString(),
-    sourceHtmlBytes: Buffer.byteLength(messagesHtml, 'utf-8'),
+    sourceHtmlBytes: htmlByteLength,
   };
 }
