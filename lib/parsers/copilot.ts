@@ -7,15 +7,17 @@ export async function parseCopilot(html: string): Promise<Conversation> {
     throw new Error('HTML content is empty or invalid');
   }
 
-  const dom = new JSDOM(html);
+ const dom = new JSDOM(html, { runScripts: 'outside-only' });
   const document = dom.window.document;
 
   // More flexible selector for capturing Copilot message containers
-  const messageNodes = Array.from(
-    document.querySelectorAll(
-      '[data-content="user-message"], [data-content="ai-message"], div.text-base.break-words'
-    )
-  );
+ const messageNodes = Array.from(
+  document.querySelectorAll(
+    '[data-content="user-message"], [data-content="ai-message"], div.text-base.break-words'
+  )
+);
+console.log('Found', messageNodes.length, 'message nodes');
+
 
   const messagesHtml = messageNodes
     .map((el) => el.innerHTML.trim())
