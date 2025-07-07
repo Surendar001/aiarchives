@@ -26,23 +26,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const messages = Array.from(
       document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
     )
-      .map(el => {
+     .map(el => {
   const container = document.createElement('div');
   container.innerHTML = el.innerHTML.trim();
 
-  // Recursively remove "Copilot said" and clean numbered domains
+  // Traverse all text nodes and clean them
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
   let node;
   while ((node = walker.nextNode())) {
-    // Remove "Copilot said" from any position
-    node.nodeValue = node.nodeValue.replace(/^Copilot said[:\-–]?\s*/i, '');
-
-    // Remove numbered domain-like footnotes (e.g. 1forbes.com, 2www.jobscan.co)
-    node.nodeValue = node.nodeValue.replace(/\b\d+[a-z]+\.[a-z]{2,}(?:[a-z.\/]*)?/gi, '');
+    node.nodeValue = node.nodeValue
+      .replace(/^Copilot said[:\-–]?\s*/i, '')                          // Remove "Copilot said"
+      .replace(/\b\d+[a-z]+\.[a-z]{2,}(?:[\/\w.-]*)?/gi, '')           // Remove 1forbes.com-like footnotes
+      .replace(/\[\d+\]/g, '')                                         // Remove [1], [2], etc.
+      .replace(/[\u2018\u2019]/g, "'")                                 // Normalize apostrophes
+      .replace(/[\u201C\u201D]/g, '"')                                 // Normalize quotes
+      .replace(/â€™/g, "'")
+      .replace(/â€œ/g, '"')
+      .replace(/â€/g, '"')
+      .replace(/â€“/g, '–')
+      .replace(/â€”/g, '—')
+      .replace(/â€¦/g, '…')
+      .replace(/\s{2,}/g, ' ')                                         // Clean excess whitespace
+      .trim();
   }
 
   return container.innerHTML.trim();
 })
+
 
       .filter(Boolean);
 
