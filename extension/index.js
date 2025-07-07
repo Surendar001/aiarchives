@@ -27,21 +27,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
     )
       .map(el => {
-        const container = document.createElement('div');
-        container.innerHTML = el.innerHTML.trim();
+  const container = document.createElement('div');
+  container.innerHTML = el.innerHTML.trim();
 
-        const first = container.firstChild;
-        if (
-          first &&
-          first.textContent &&
-          /^Copilot said[:\-–]?\s*/i.test(first.textContent.trim())
-        ) {
-          // Remove the first node if it’s "Copilot said"
-          container.removeChild(first);
-        }
+  // Look through child nodes and remove one that starts with "Copilot said"
+  for (const child of Array.from(container.childNodes)) {
+    if (
+      child.textContent &&
+      /^Copilot said[:\-–]?\s*/i.test(child.textContent.trim())
+    ) {
+      container.removeChild(child);
+      break;
+    }
+  }
 
-        return container.innerHTML.trim();
-      })
+  return container.innerHTML.trim();
+})
+
       .filter(Boolean);
 
     // ✅ Step 4: Build styled HTML
