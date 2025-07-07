@@ -11,6 +11,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'scrape') {
     console.log('Scrape triggered from popup');
 
+    document.querySelectorAll('*').forEach((el) => {
+  const text = el.textContent?.trim();
+  if (/^Copilot said[:\-–]?$/i.test(text)) {
+    el.remove();
+  }
+});
+
     // ✅ Step 1: Use TextEncoder/TextDecoder to ensure clean UTF-8
     const encoder = new TextEncoder();
     const decoder = new TextDecoder('utf-8');
