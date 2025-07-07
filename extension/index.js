@@ -18,25 +18,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const utf8Bytes = encoder.encode(rawHtml);
     const cleanHtml = decoder.decode(utf8Bytes);
 
-    // ✅ Step 2: Select and clean up messages
+    // ✅ Step 2: Clean up unwanted UI elements from the page
+    document.querySelectorAll('svg.h-9.w-2').forEach(el => el.remove());
+    document.querySelectorAll('button[data-testid="create-page"]').forEach(el => el.remove());
+
+    // ✅ Step 3: Select conversation blocks
     const messages = Array.from(
       document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
     )
-      .filter(el => {
-        // ❌ Filter out vertical bar svg and "Edit in a page" buttons
-        return !el.querySelector('svg') && !el.querySelector('[data-testid="create-page"]');
-      })
       .map(el => {
         let html = el.innerHTML.trim();
 
-        // 🧹 Remove "Copilot said" if it appears at the start
+        // Remove "Copilot said" from the beginning
         html = html.replace(/^Copilot said[:\-–]?\s*/i, '');
 
         return html;
       })
       .filter(Boolean);
 
-    // ✅ Step 3: Wrap in styled HTML
+    // ✅ Step 4: Format HTML for upload
     const conversationHTML = messages
       .map(msg => `<div class="conversation-block">${msg}</div>`)
       .join('<hr>');
@@ -51,7 +51,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const styledHTML = embeddedStyle + `<div class="copilot-conversation">${conversationHTML}</div>`;
 
-    // ✅ Step 4: Upload to backend
+    // ✅ Step 5: Upload to backend
     const formData = new FormData();
     formData.append('file', new Blob([cleanHtml], { type: 'text/html' }));
     formData.append('model', currentModel);
