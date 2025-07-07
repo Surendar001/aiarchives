@@ -1,6 +1,30 @@
 import type { Conversation } from '@/types/conversation';
 import { JSDOM } from 'jsdom';
 
+// Helper: Clean up all inner text content
+function cleanInnerHtml(rawHtml: string): string {
+  const container = new JSDOM(`<div>${rawHtml}</div>`).window.document.body;
+  const walker = container.ownerDocument.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    node.nodeValue = node.nodeValue
+      ?.replace(/^Copilot said[:\-–]?\s*/i, '')                                // Remove "Copilot said"
+      .replace(/\b\d+[a-z]+\.[a-z]{2,}(?:[\/\w.-]*)?/gi, '')                  // Remove numbered URLs
+      .replace(/\[\d+\]/g, '')                                               // Remove bracketed refs
+      .replace(/[‘’]/g, `'`)
+      .replace(/[“”]/g, `"`)
+      .replace(/â€™/g, `'`)
+      .replace(/â€œ/g, `"`)
+      .replace(/â€/g, `"`)
+      .replace(/â€“/g, '–')
+      .replace(/â€”/g, '—')
+      .replace(/â€¦/g, '…')
+      .replace(/\s{2,}/g, ' ')
+      .trim() ?? '';
+  }
+  return container.innerHTML.trim();
+}
+
 export async function parseCopilot(html: string): Promise<Conversation> {
   const htmlByteLength = Buffer.byteLength(html, 'utf-8');
   if (htmlByteLength <= 0) {
@@ -10,7 +34,6 @@ export async function parseCopilot(html: string): Promise<Conversation> {
   const dom = new JSDOM(html, { contentType: 'text/html; charset=UTF-8' });
   const document = dom.window.document;
 
-  // Select message blocks (user + AI)
   const messageNodes = Array.from(
     document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
   );
@@ -22,11 +45,10 @@ export async function parseCopilot(html: string): Promise<Conversation> {
   const filteredMessages = messageNodes
     .map((el) => {
       if (el.querySelector('input, textarea')) return null;
-      return el.innerHTML.trim(); // No need for manual emoji fixes anymore
+      return cleanInnerHtml(el.innerHTML);
     })
     .filter(Boolean);
 
-  // Minimal embedded styling
   const embeddedStyle = `
     <style>
       body { font-family: system-ui, sans-serif; padding: 1em; background: #fff; color: #111; }
