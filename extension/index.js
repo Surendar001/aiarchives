@@ -27,21 +27,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
     )
       .map(el => {
-        const container = document.createElement('div');
-        container.innerHTML = el.innerHTML.trim();
+  const container = document.createElement('div');
+  container.innerHTML = el.innerHTML.trim();
 
-        // Remove any child element that contains "Copilot said"
-        Array.from(container.childNodes).forEach(child => {
-          if (
-            child.textContent &&
-            /^Copilot said[:\-–]?\s*/i.test(child.textContent.trim())
-          ) {
-            container.removeChild(child);
-          }
-        });
+  // 🔍 Recursively remove "Copilot said" from any text node
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    const text = node.nodeValue.trim();
 
-        return container.innerHTML.trim();
-      })
+    // Remove "Copilot said"
+    if (/^Copilot said[:\-–]?\s*/i.test(text)) {
+      node.nodeValue = '';
+    }
+
+    // Remove footnote-style URLs (e.g. 1forbes.com)
+    node.nodeValue = node.nodeValue.replace(/\b\d+[a-z]+\.[a-z]{2,}(?:[a-z.\/]*)?/gi, '');
+  }
+
+  return container.innerHTML.trim();
+})
       .filter(Boolean);
 
     // ✅ Step 4: Apply basic styling and structure
