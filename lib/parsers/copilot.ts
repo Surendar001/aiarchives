@@ -50,6 +50,25 @@ export async function parseCopilot(html: string): Promise<Conversation> {
     document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
   );
 
+    const cleanedMessages = messageNodes
+    .map((node) => {
+      let content = node.textContent?.trim() || '';
+
+      // Clean up Copilot artifacts
+      content = content
+        .replace(/^Copilot said\s*/i, '')
+        .replace(/Edit in a page$/i, '')
+        .replace(/\d+(en\.wikipedia|www\.)[^\s]*/gi, '')
+        .trim();
+
+      return content;
+    })
+    .filter(Boolean);
+
+  if (!cleanedMessages.length) {
+    throw new Error('No valid Copilot messages found');
+  }
+
   if (!messageNodes.length) {
     throw new Error('Could not extract any message HTML content');
   }
