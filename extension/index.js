@@ -11,32 +11,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'scrape') {
     console.log('Scrape triggered from popup');
 
-    // ✅ Step 1: Remove unwanted global UI elements BEFORE scraping
+    // ✅ Step 1: Remove unwanted global UI elements
     document.querySelectorAll('svg.h-9.w-2').forEach(el => el.remove());
     document.querySelectorAll('button[data-testid="create-page"]').forEach(el => el.remove());
 
-    // ✅ Step 2: Get and normalize HTML using UTF-8
+    // ✅ Step 2: Normalize HTML to UTF-8 to preserve emojis
     const encoder = new TextEncoder();
     const decoder = new TextDecoder('utf-8');
     const rawHtml = document.documentElement.outerHTML;
     const utf8Bytes = encoder.encode(rawHtml);
     const cleanHtml = decoder.decode(utf8Bytes);
 
-    // ✅ Step 3: Extract conversation messages and clean each one
+    // ✅ Step 3: Extract and clean messages
     const messages = Array.from(
       document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
     )
       .map(el => {
-        let html = el.innerHTML.trim();
+        const container = document.createElement('div');
+        container.innerHTML = el.innerHTML.trim();
 
-        // 🧹 Remove "Copilot said" from the start of any message
-        html = html.replace(/^Copilot said[:\-–]?\s*/i, '');
+        const first = container.firstChild;
+        if (
+          first &&
+          first.textContent &&
+          /^Copilot said[:\-–]?\s*/i.test(first.textContent.trim())
+        ) {
+          // Remove the first node if it’s "Copilot said"
+          container.removeChild(first);
+        }
 
-        return html;
+        return container.innerHTML.trim();
       })
       .filter(Boolean);
 
-    // ✅ Step 4: Wrap messages in styled HTML
+    // ✅ Step 4: Build styled HTML
     const conversationHTML = messages
       .map(msg => `<div class="conversation-block">${msg}</div>`)
       .join('<hr>');
@@ -51,7 +59,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const styledHTML = embeddedStyle + `<div class="copilot-conversation">${conversationHTML}</div>`;
 
-    // ✅ Step 5: Upload to backend
+    // ✅ Step 5: Upload to server
     const formData = new FormData();
     formData.append('file', new Blob([cleanHtml], { type: 'text/html' }));
     formData.append('model', currentModel);
