@@ -11,42 +11,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'scrape') {
     console.log('Scrape triggered from popup');
 
-    // ✅ Step 1: Remove unwanted global UI elements
+    // ✅ Step 1: Remove known unwanted UI elements
     document.querySelectorAll('svg.h-9.w-2').forEach(el => el.remove());
     document.querySelectorAll('button[data-testid="create-page"]').forEach(el => el.remove());
 
-    // ✅ Step 2: Normalize HTML to UTF-8 to preserve emojis
+    // ✅ Step 2: Normalize HTML (clean UTF-8, emoji-safe)
     const encoder = new TextEncoder();
     const decoder = new TextDecoder('utf-8');
     const rawHtml = document.documentElement.outerHTML;
     const utf8Bytes = encoder.encode(rawHtml);
     const cleanHtml = decoder.decode(utf8Bytes);
 
-    // ✅ Step 3: Extract and clean messages
+    // ✅ Step 3: Extract and clean conversation messages
     const messages = Array.from(
       document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
     )
       .map(el => {
-  const container = document.createElement('div');
-  container.innerHTML = el.innerHTML.trim();
+        const container = document.createElement('div');
+        container.innerHTML = el.innerHTML.trim();
 
-  // Look through child nodes and remove one that starts with "Copilot said"
-  for (const child of Array.from(container.childNodes)) {
-    if (
-      child.textContent &&
-      /^Copilot said[:\-–]?\s*/i.test(child.textContent.trim())
-    ) {
-      container.removeChild(child);
-      break;
-    }
-  }
+        // Remove any child element that contains "Copilot said"
+        Array.from(container.childNodes).forEach(child => {
+          if (
+            child.textContent &&
+            /^Copilot said[:\-–]?\s*/i.test(child.textContent.trim())
+          ) {
+            container.removeChild(child);
+          }
+        });
 
-  return container.innerHTML.trim();
-})
-
+        return container.innerHTML.trim();
+      })
       .filter(Boolean);
 
-    // ✅ Step 4: Build styled HTML
+    // ✅ Step 4: Apply basic styling and structure
     const conversationHTML = messages
       .map(msg => `<div class="conversation-block">${msg}</div>`)
       .join('<hr>');
@@ -61,7 +59,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const styledHTML = embeddedStyle + `<div class="copilot-conversation">${conversationHTML}</div>`;
 
-    // ✅ Step 5: Upload to server
+    // ✅ Step 5: Upload to your endpoint
     const formData = new FormData();
     formData.append('file', new Blob([cleanHtml], { type: 'text/html' }));
     formData.append('model', currentModel);
@@ -81,6 +79,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false });
       });
 
-    return true; // Keeps message channel open
+    return true; // async response
   }
 });
