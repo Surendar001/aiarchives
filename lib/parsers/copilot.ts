@@ -10,55 +10,46 @@ export async function parseCopilot(html: string): Promise<Conversation> {
   const dom = new JSDOM(html);
   const document = dom.window.document;
 
-  // Extract styles from <style> and <link rel="stylesheet">
-const extractStyles = () => {
-  const styleTags = Array.from(document.querySelectorAll('style')).map((el) => el.outerHTML);
-  const linkTags = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(
-    (el) => `<link rel="stylesheet" href="${(el as HTMLLinkElement).href}">`
+  // Select all message containers (user and assistant)
+  const messageNodes = Array.from(
+    document.querySelectorAll('[id$="-user-message"], [id$="-ai-message"]')
   );
-  return [...linkTags, ...styleTags].join('\n');
-};
 
-
-  // Extract conversation nodes, excluding any with interactive inputs
-  const extractConversationHTML = () => {
-    const containerSelector =
-      'div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap';
-
-    const nodes = Array.from(document.querySelectorAll(containerSelector));
-
-    const filteredNodes = nodes.filter(
-      (node) =>
-        !node.querySelector('input, textarea, select, button') && node.innerHTML.trim().length > 0
-    );
-
-    return filteredNodes.map((node) => node.outerHTML).join('<hr>\n');
-  };
-
-  const styles = extractStyles();
-  const bodyContent = extractConversationHTML();
-
-  if (!bodyContent) {
+  if (messageNodes.length === 0) {
     throw new Error('Could not extract any message HTML content');
   }
 
-  const fullHTML = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="utf-8">
-      <title>Copilot Conversation</title>
-      ${styles}
-    </head>
-    <body style="background-color: #111; color: white; padding: 2em; font-family: sans-serif;">
-      ${bodyContent}
-    </body>
+  // Remove input elements from each message node
+  messageNodes.forEach(node => {
+    node.querySelectorAll('input, textarea, button').forEach(el => el.remove());
+  });
+
+  // Extract inline HTML content of each message
+  const messageHTML = messageNodes
+    .map(node => node.innerHTML.trim())
+    .filter(Boolean)
+    .join('<hr>');
+
+  // Optional: Extract style tag content from <head> if you want inline CSS
+  const styleTags = Array.from(document.querySelectorAll('style'))
+    .map(style => style.textContent)
+    .filter(Boolean)
+    .join('\n');
+
+  const combinedHTML = `
+    <html>
+      <head>
+        <style>${styleTags}</style>
+      </head>
+      <body>
+        ${messageHTML}
+      </body>
     </html>
   `.trim();
 
   return {
     model: 'Copilot',
-    content: fullHTML,
+    content: combinedHTML,
     scrapedAt: new Date().toISOString(),
     sourceHtmlBytes: htmlByteLength,
   };
