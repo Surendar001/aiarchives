@@ -11,46 +11,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'scrape') {
     console.log('Scrape triggered from popup');
 
-    // Extract full HTML of the page (saves raw Copilot structure)
-    const fullHtml = document.documentElement.outerHTML;
+    // ✅ Step 1: Use TextEncoder/TextDecoder to ensure clean UTF-8
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder('utf-8');
 
-    // Cleaning and normalization function
-    const normalize = (str) =>
-      str
-        .replace(/ðŸš€/g, '🚀')
-        .replace(/ðŸŒ/g, '🌐')
-        .replace(/ðŸ§/g, '🧠')
-        .replace(/ðŸŽ®/g, '🎮')
-        .replace(/ðŸ“±/g, '📱')
-        .replace(/ðŸ§‘â€ðŸ«/g, '🧑‍🏫')
-        .replace(/âš–ï¸/g, '⚠️')
-        .replace(/[‘’]/g, `'`)
-        .replace(/[“”]/g, `"`)
-        .replace(/â€™/g, `'`)
-        .replace(/â€œ/g, `"`)
-        .replace(/â€/g, `"`)
-        .replace(/â€“/g, '–')
-        .replace(/â€”/g, '—')
-        .replace(/â€¦/g, '…')
-        .replace(/Copilot said[:\-–]?\s*/gi, '')           // remove "Copilot said"
-        .replace(/\d+(?:[a-z]+\.[a-z]+)+(?:\d+)?/gi, '')   // remove links like 1ed.stanford.edu
-        .replace(/\[\d+\]/g, '')                           // remove bracketed refs like [1]
-        .replace(/\s{2,}/g, ' ')                           // collapse multiple spaces
-        .trim();
+    // Get the page DOM as HTML
+    const rawHtml = document.documentElement.outerHTML;
 
-    // Extract relevant messages (user + AI) — same selector
+    // Encode to bytes and decode back to ensure UTF-8 is preserved
+    const utf8Bytes = encoder.encode(rawHtml);
+    const cleanHtml = decoder.decode(utf8Bytes); // 🚫 no more broken emojis!
+
+    // ✅ Step 2: Extract conversation messages and preserve formatting
     const messages = Array.from(
       document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
     )
-      .map(el => normalize(el.innerHTML.trim()))
+      .map(el => el.innerHTML.trim())
       .filter(Boolean);
 
-    // Wrap each message and join with <hr>
+    // Remove any Copilot header from the first message (if present)
+    if (messages.length > 0 && /^Copilot said[:\-–]?\s*/i.test(messages[0])) {
+      messages[0] = messages[0].replace(/^Copilot said[:\-–]?\s*/i, '');
+    }
+
     const conversationHTML = messages
       .map(msg => `<div class="conversation-block">${msg}</div>`)
       .join('<hr>');
 
-    // Optional embedded style for nicer formatting
     const embeddedStyle = `
       <style>
         body { font-family: system-ui, sans-serif; padding: 1em; background: #fff; color: #111; }
@@ -61,13 +48,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const styledHTML = embeddedStyle + `<div class="copilot-conversation">${conversationHTML}</div>`;
 
-    // Prepare data to send to your backend
+    // ✅ Step 3: Upload cleaned data
     const formData = new FormData();
-    formData.append('file', new Blob([fullHtml], { type: 'text/html' })); // raw HTML
-    formData.append('model', currentModel);                                // model from popup
-    formData.append('content', styledHTML);                                // cleaned + styled content
+    formData.append('file', new Blob([cleanHtml], { type: 'text/html' }));
+    formData.append('model', currentModel);
+    formData.append('content', styledHTML);
 
-    // Upload to backend API
     fetch('https://aiarchives-suren.duckdns.org/api/conversation', {
       method: 'POST',
       body: formData,
@@ -82,6 +68,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false });
       });
 
-    return true; // keep message channel open for async response
+    return true; // Keep message channel open for async sendResponse
   }
 });
