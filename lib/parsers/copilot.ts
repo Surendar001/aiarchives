@@ -10,32 +10,55 @@ export async function parseCopilot(html: string): Promise<Conversation> {
   const dom = new JSDOM(html);
   const document = dom.window.document;
 
-  const allMessageNodes = Array.from(
-    document.querySelectorAll('[data-content="user-message"], [data-content="ai-message"]')
+  // Extract styles from <style> and <link rel="stylesheet">
+const extractStyles = () => {
+  const styleTags = Array.from(document.querySelectorAll('style')).map((el) => el.outerHTML);
+  const linkTags = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(
+    (el) => `<link rel="stylesheet" href="${(el as HTMLLinkElement).href}">`
   );
+  return [...linkTags, ...styleTags].join('\n');
+};
 
-  const cleanedMessages = allMessageNodes
-    .map((node) => {
-      let content = node.textContent?.trim() || '';
 
-      // Clean up Copilot artifacts
-      content = content
-        .replace(/^Copilot said\s*/i, '')
-        .replace(/Edit in a page$/i, '')
-        .replace(/\d+(en\.wikipedia|www\.)[^\s]*/gi, '')
-        .trim();
+  // Extract conversation nodes, excluding any with interactive inputs
+  const extractConversationHTML = () => {
+    const containerSelector =
+      'div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap';
 
-      return content;
-    })
-    .filter(Boolean);
+    const nodes = Array.from(document.querySelectorAll(containerSelector));
 
-  if (!cleanedMessages.length) {
-    throw new Error('No valid Copilot messages found');
+    const filteredNodes = nodes.filter(
+      (node) =>
+        !node.querySelector('input, textarea, select, button') && node.innerHTML.trim().length > 0
+    );
+
+    return filteredNodes.map((node) => node.outerHTML).join('<hr>\n');
+  };
+
+  const styles = extractStyles();
+  const bodyContent = extractConversationHTML();
+
+  if (!bodyContent) {
+    throw new Error('Could not extract any message HTML content');
   }
+
+  const fullHTML = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <title>Copilot Conversation</title>
+      ${styles}
+    </head>
+    <body style="background-color: #111; color: white; padding: 2em; font-family: sans-serif;">
+      ${bodyContent}
+    </body>
+    </html>
+  `.trim();
 
   return {
     model: 'Copilot',
-    content: cleanedMessages.join('\n\n'), // 👈 return as plain text, not JSON
+    content: fullHTML,
     scrapedAt: new Date().toISOString(),
     sourceHtmlBytes: htmlByteLength,
   };
