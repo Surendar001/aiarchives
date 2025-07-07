@@ -57,7 +57,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // ✅ Step 3: Upload cleaned data
     const formData = new FormData();
-    formData.append('file', new Blob([cleanHtml], { type: 'text/html' }));
+    formData.append('htmlDoc', new Blob([cleanHtml], { type: 'text/html' })); // ✅ matches backend
     formData.append('model', currentModel);
     formData.append('content', styledHTML);
 
