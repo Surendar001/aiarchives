@@ -11,6 +11,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'scrape') {
     console.log('Scrape triggered from popup');
 
+  document.querySelectorAll('svg.h-9.w-2').forEach(el => el.remove()); // sidebar line
+  document.querySelectorAll('button[data-testid="create-page"]').forEach(el => el.remove()); // edit button
+
     // ✅ Step 1: Ensure UTF-8 consistency
     const encoder = new TextEncoder();
     const decoder = new TextDecoder('utf-8');
