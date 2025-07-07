@@ -42,12 +42,19 @@ export async function parseCopilot(html: string): Promise<Conversation> {
     throw new Error('Could not extract any message HTML content');
   }
 
-  const filteredMessages = messageNodes
-    .map((el) => {
+const filteredMessages = messageNodes
+  .map((el) => {
+    try {
+      if (!el || !(el instanceof dom.window.HTMLElement)) return null;
       if (el.querySelector('input, textarea')) return null;
-      return cleanInnerHtml(el.innerHTML);
-    })
-    .filter(Boolean);
+      const html = el.innerHTML?.trim();
+      return html ? cleanInnerHtml(html) : null;
+    } catch (e) {
+      console.warn('Failed to process element:', e);
+      return null;
+    }
+  })
+  .filter(Boolean);
 
   const embeddedStyle = `
     <style>
