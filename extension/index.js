@@ -11,35 +11,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'scrape') {
     console.log('Scrape triggered from popup');
 
-  document.querySelectorAll('svg.h-9.w-2').forEach(el => el.remove()); // sidebar line
-  document.querySelectorAll('button[data-testid="create-page"]').forEach(el => el.remove()); // edit button
+    // ✅ Step 1: Remove unwanted global UI elements BEFORE scraping
+    document.querySelectorAll('svg.h-9.w-2').forEach(el => el.remove());
+    document.querySelectorAll('button[data-testid="create-page"]').forEach(el => el.remove());
 
-    // ✅ Step 1: Ensure UTF-8 consistency
+    // ✅ Step 2: Get and normalize HTML using UTF-8
     const encoder = new TextEncoder();
     const decoder = new TextDecoder('utf-8');
     const rawHtml = document.documentElement.outerHTML;
     const utf8Bytes = encoder.encode(rawHtml);
     const cleanHtml = decoder.decode(utf8Bytes);
 
-    // ✅ Step 2: Clean up unwanted UI elements from the page
-    document.querySelectorAll('svg.h-9.w-2').forEach(el => el.remove());
-    document.querySelectorAll('button[data-testid="create-page"]').forEach(el => el.remove());
-
-    // ✅ Step 3: Select conversation blocks
+    // ✅ Step 3: Extract conversation messages and clean each one
     const messages = Array.from(
       document.querySelectorAll('div.text-base.break-words.flex.flex-col.gap-4.whitespace-pre-wrap')
     )
       .map(el => {
         let html = el.innerHTML.trim();
 
-        // Remove "Copilot said" from the beginning
+        // 🧹 Remove "Copilot said" from the start of any message
         html = html.replace(/^Copilot said[:\-–]?\s*/i, '');
 
         return html;
       })
       .filter(Boolean);
 
-    // ✅ Step 4: Format HTML for upload
+    // ✅ Step 4: Wrap messages in styled HTML
     const conversationHTML = messages
       .map(msg => `<div class="conversation-block">${msg}</div>`)
       .join('<hr>');
