@@ -30,23 +30,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const container = document.createElement('div');
   container.innerHTML = el.innerHTML.trim();
 
-  // 🔍 Recursively remove "Copilot said" from any text node
+  // Recursively remove "Copilot said" and clean numbered domains
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
   let node;
   while ((node = walker.nextNode())) {
-    const text = node.nodeValue.trim();
+    // Remove "Copilot said" from any position
+    node.nodeValue = node.nodeValue.replace(/^Copilot said[:\-–]?\s*/i, '');
 
-    // Remove "Copilot said"
-    if (/^Copilot said[:\-–]?\s*/i.test(text)) {
-      node.nodeValue = '';
-    }
-
-    // Remove footnote-style URLs (e.g. 1forbes.com)
+    // Remove numbered domain-like footnotes (e.g. 1forbes.com, 2www.jobscan.co)
     node.nodeValue = node.nodeValue.replace(/\b\d+[a-z]+\.[a-z]{2,}(?:[a-z.\/]*)?/gi, '');
   }
 
   return container.innerHTML.trim();
 })
+
       .filter(Boolean);
 
     // ✅ Step 4: Apply basic styling and structure
