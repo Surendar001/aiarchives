@@ -7,6 +7,7 @@ import { createConversationRecord, getAllConversationRecords } from '@/lib/db/co
 import { randomUUID } from 'crypto';
 import { loadConfig } from '@/lib/config';
 
+
 let isInitialized = false;
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_ALLOWED_ORIGIN || '*';
 

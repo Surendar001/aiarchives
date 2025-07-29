@@ -32,10 +32,10 @@ const scrape = () => {
   });
 };
 
-chrome.tabs.query({ active: true, currentWindow: true, url: 'https://bard.google.com/*' }, (tabs) => {
+chrome.tabs.query({ active: true, currentWindow: true, url: 'https://copilot.microsoft.com/*' }, (tabs) => {
   if (tabs?.length) {
-    chrome.tabs.sendMessage(tabs[0].id, { action: 'model', model: 'Bard' }, function (_) {
-      console.log('is Bard');
+    chrome.tabs.sendMessage(tabs[0].id, { action: 'model', model: 'Copilot' }, function (_) {
+      console.log('is Copilot');
     });
   }
 });
@@ -46,6 +46,7 @@ chrome.tabs.query({ active: true, currentWindow: true, url: 'https://www.meta.ai
     });
   }
 });
+
 chrome.tabs.query({ active: true, currentWindow: true, url: 'https://claude.ai/*' }, (tabs) => {
   if (tabs?.length) {
     chrome.tabs.sendMessage(tabs[0].id, { action: 'model', model: 'Claude' }, function (_) {
