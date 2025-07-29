@@ -8,10 +8,8 @@ import { randomUUID } from 'crypto';
 import { loadConfig } from '@/lib/config';
 
 let isInitialized = false;
+const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_ALLOWED_ORIGIN || '*';
 
-/**
- * Initialize services if not already initialized
- */
 async function ensureInitialized() {
   if (!isInitialized) {
     try {
@@ -30,60 +28,44 @@ async function ensureInitialized() {
   }
 }
 
-const ALLOWED_ORIGIN = '*';
+//  Set CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
 
 export async function OPTIONS() {
-  // Preflight handler
   return new NextResponse(null, {
     status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-      'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
+    headers: corsHeaders,
   });
 }
 
-/**
- * POST /api/conversation
- *
- * Handles storing a new conversation from HTML input
- *
- * Request body (multipart/form-data):
- * - htmlDoc: File - The HTML document containing the conversation
- * - model: string - The AI model used (e.g., "ChatGPT", "Claude")
- *
- * Response:
- * - 201: { url: string } - The permalink URL for the conversation
- * - 400: { error: string } - Invalid request
- * - 500: { error: string } - Server error
- */
 export async function POST(req: NextRequest) {
   try {
-    // Initialize services on first request
     await ensureInitialized();
 
     const formData = await req.formData();
-    const file = formData.get('htmlDoc');
+    const file = formData.get('htmlDoc') || formData.get('file'); // support both names
     const model = formData.get('model')?.toString() ?? 'ChatGPT';
 
-    // Validate input
     if (!(file instanceof Blob)) {
-      return NextResponse.json({ error: '`htmlDoc` must be a file field' }, { status: 400 });
+      return NextResponse.json({ error: '`htmlDoc` must be a file field' }, { status: 400, headers: corsHeaders });
     }
 
-    // Parse the conversation from HTML
-    const html = await file.text();
-    const conversation = await parseHtmlToConversation(html, model);
+  const html = await file.text();
+ const conversation = await parseHtmlToConversation(html, model);
 
-    // Generate a unique ID for the conversation
+    console.log('\n📋 conversation =>', conversation.model, conversation.content);
+    console.log('\n📄 HTML snapshot (truncated):');
+    console.log(html.substring(0, 300) + '...');
+
     const conversationId = randomUUID();
-
-    // Store only the conversation content in S3
     const contentKey = await s3Client.storeConversation(conversationId, conversation.content);
 
     // Create the database record with metadata
-    const dbInput: CreateConversationInput = {
+      const dbInput: CreateConversationInput = {
       model: conversation.model,
       scrapedAt: new Date(conversation.scrapedAt),
       sourceHtmlBytes: conversation.sourceHtmlBytes,
@@ -110,7 +92,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Internal error, see logs' }, { status: 500 });
   }
 }
-
 /**
  * GET /api/conversation
  *
@@ -137,8 +118,7 @@ export async function GET(req: NextRequest) {
     // Parse and validate query parameters
     const limit = limitParam ? parseInt(limitParam, 10) : 50;
     const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
-
-    if (isNaN(limit) || limit < 1 || limit > 100) {
+ if (isNaN(limit) || limit < 1 || limit > 100) {
       return NextResponse.json({ error: 'Invalid limit parameter. Must be between 1 and 100.' }, { status: 400 });
     }
 
@@ -163,3 +143,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Internal error, see logs' }, { status: 500 });
   }
 }
+          
